@@ -1,0 +1,92 @@
+name: SPD Build and Push
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: spd-build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: spd-management
+
+jobs:
+  build-push:
+    name: Build-Push ${{ matrix.name }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: plane-admin
+            dockerfile: apps/admin/Dockerfile.admin
+            context: .
+          - name: plane-frontend
+            dockerfile: apps/web/Dockerfile.web
+            context: .
+          - name: plane-space
+            dockerfile: apps/space/Dockerfile.space
+            context: .
+          - name: plane-live
+            dockerfile: apps/live/Dockerfile.live
+            context: .
+          - name: plane-backend
+            dockerfile: apps/api/Dockerfile.api
+            context: ./apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: vars
+        run: echo "tag=prd-$(echo ${{ github.sha }} | cut -c1-8)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ steps.vars.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
+
+  update-infra-tag:
+    name: Bump planeVersion in infra repo
+    needs: build-push
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set image tag
+        id: vars
+        run: echo "tag=prd-$(echo ${{ github.sha }} | cut -c1-8)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: SPD-DevOps/speedio-k8s-devops-infra
+          token: ${{ secrets.GH_PAT }}
+          path: infra
+
+      - name: Bump planeVersion
+        run: |
+          cd infra
+          sed -i "s/planeVersion: .*/planeVersion: ${{ steps.vars.outputs.tag }}/" k8s/charts/prd/plane/values.yaml
+          git config user.name "${{ secrets.GH_USERNAME }}"
+          git config user.email "${{ secrets.GH_USERNAME }}@users.noreply.github.com"
+          git add k8s/charts/prd/plane/values.yaml
+          if git diff --cached --quiet; then
+            echo "No change, skipping commit"
+          else
+            git commit -m "plane: update image version to ${{ steps.vars.outputs.tag }}"
+            git push
+          fi
