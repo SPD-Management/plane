@@ -29,13 +29,18 @@ class LLMProvider:
     name: str = ""
     models: List[str] = []
     default_model: str = ""
+    # OpenAI-compatible endpoint. None falls back to the SDK default (api.openai.com).
+    base_url: str | None = None
+    # Set on providers whose model catalog moves faster than this file can track.
+    allow_any_model: bool = False
 
     @classmethod
-    def get_config(cls) -> Dict[str, str | List[str]]:
+    def get_config(cls) -> Dict[str, str | List[str] | bool | None]:
         return {
             "name": cls.name,
             "models": cls.models,
             "default_model": cls.default_model,
+            "base_url": cls.base_url,
         }
 
 
@@ -66,19 +71,54 @@ class GeminiProvider(LLMProvider):
     default_model = "gemini-pro"
 
 
+class ZaiProvider(LLMProvider):
+    """Z.AI (Zhipu GLM), pay-as-you-go keys."""
+
+    name = "Z.AI"
+    models = [
+        "glm-5.3-flash",
+        "glm-4.6",
+        "glm-4.5",
+        "glm-4.5-air",
+        "glm-4.5-airx",
+        "glm-4.5-flash",
+    ]
+    default_model = "glm-4.6"
+    base_url = "https://api.z.ai/api/paas/v4"
+    allow_any_model = True
+
+
+class ZaiCodingPlanProvider(ZaiProvider):
+    """Z.AI subscription (Coding Plan) keys, which are served from a separate host."""
+
+    name = "Z.AI Coding Plan"
+    default_model = "glm-5.3-flash"
+    base_url = "https://api.z.ai/api/coding/paas/v4"
+
+
+class OpenAICompatibleProvider(LLMProvider):
+    """Any other OpenAI-compatible endpoint - requires LLM_BASE_URL to be set."""
+
+    name = "OpenAI-compatible"
+    allow_any_model = True
+
+
 SUPPORTED_PROVIDERS = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
     "gemini": GeminiProvider,
+    "zai": ZaiProvider,
+    "zai-coding": ZaiCodingPlanProvider,
+    "openai-compatible": OpenAICompatibleProvider,
 }
 
 
-def get_llm_config() -> Tuple[str | None, str | None, str | None]:
+def get_llm_config() -> Tuple[str | None, str | None, str | None, str | None]:
     """
     Helper to get LLM configuration values, returns:
-        - api_key, model, provider
+        - api_key, model, provider, base_url
     """
-    api_key, provider_key, model = get_configuration_value(
+    api_key, provider_key, model, base_url = get_configuration_value(
         [
             {
                 "key": "LLM_API_KEY",
@@ -92,35 +132,51 @@ def get_llm_config() -> Tuple[str | None, str | None, str | None]:
                 "key": "LLM_MODEL",
                 "default": os.environ.get("LLM_MODEL", None),
             },
+            {
+                "key": "LLM_BASE_URL",
+                "default": os.environ.get("LLM_BASE_URL", None),
+            },
         ]
     )
 
-    provider = SUPPORTED_PROVIDERS.get(provider_key.lower())
+    # Accept both "zai-coding" and "zai_coding" spellings.
+    provider = SUPPORTED_PROVIDERS.get((provider_key or "").strip().lower().replace("_", "-"))
     if not provider:
         log_exception(ValueError(f"Unsupported provider: {provider_key}"))
-        return None, None, None
+        return None, None, None, None
 
     if not api_key:
         log_exception(ValueError(f"Missing API key for provider: {provider.name}"))
-        return None, None, None
+        return None, None, None, None
+
+    # An explicit base URL wins over the provider default so an instance can point at a
+    # proxy, a gateway or a regional endpoint without needing a new provider class.
+    base_url = (base_url or "").strip() or provider.base_url
+
+    if not base_url and not provider.models:
+        log_exception(ValueError(f"Missing LLM_BASE_URL for provider: {provider.name}"))
+        return None, None, None, None
 
     # If no model specified, use provider's default
     if not model:
         model = provider.default_model
 
-    # Validate model is supported by provider
-    if model not in provider.models:
+    # Validate model is supported by provider. Providers pointing at an OpenAI-compatible
+    # endpoint ship a moving catalog, so their models are taken at face value.
+    if not provider.allow_any_model and model not in provider.models:
         log_exception(
             ValueError(
                 f"Model {model} not supported by {provider.name}. Supported models: {', '.join(provider.models)}"
             )
         )
-        return None, None, None
+        return None, None, None, None
 
-    return api_key, model, provider_key
+    return api_key, model, provider_key, base_url
 
 
-def get_llm_response(task, prompt, api_key: str, model: str, provider: str) -> Tuple[str | None, str | None]:
+def get_llm_response(
+    task, prompt, api_key: str, model: str, provider: str, base_url: str | None = None
+) -> Tuple[str | None, str | None]:
     """Helper to get LLM completion response"""
     final_text = task + "\n" + prompt
     try:
@@ -128,11 +184,15 @@ def get_llm_response(task, prompt, api_key: str, model: str, provider: str) -> T
         if provider.lower() == "gemini":
             model = f"gemini/{model}"
 
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, base_url=base_url)
         chat_completion = client.chat.completions.create(
             model=model, messages=[{"role": "user", "content": final_text}]
         )
         text = chat_completion.choices[0].message.content
+        # Reasoning models can spend their whole budget on hidden tokens and return an
+        # empty message; treat that as an error instead of formatting None downstream.
+        if not text:
+            return None, f"Empty response from {provider}"
         return text, None
     except Exception as e:
         log_exception(e)
@@ -148,7 +208,7 @@ def get_llm_response(task, prompt, api_key: str, model: str, provider: str) -> T
 class GPTIntegrationEndpoint(BaseAPIView):
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def post(self, request, slug, project_id):
-        api_key, model, provider = get_llm_config()
+        api_key, model, provider, base_url = get_llm_config()
 
         if not api_key or not model or not provider:
             return Response(
@@ -160,7 +220,7 @@ class GPTIntegrationEndpoint(BaseAPIView):
         if not task:
             return Response({"error": "Task is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        text, error = get_llm_response(task, request.data.get("prompt", False), api_key, model, provider)
+        text, error = get_llm_response(task, request.data.get("prompt", False), api_key, model, provider, base_url)
         if not text and error:
             return Response(
                 {"error": "An internal error has occurred."},
@@ -184,7 +244,7 @@ class GPTIntegrationEndpoint(BaseAPIView):
 class WorkspaceGPTIntegrationEndpoint(BaseAPIView):
     @allow_permission(allowed_roles=[ROLE.ADMIN, ROLE.MEMBER], level="WORKSPACE")
     def post(self, request, slug):
-        api_key, model, provider = get_llm_config()
+        api_key, model, provider, base_url = get_llm_config()
 
         if not api_key or not model or not provider:
             return Response(
@@ -196,7 +256,7 @@ class WorkspaceGPTIntegrationEndpoint(BaseAPIView):
         if not task:
             return Response({"error": "Task is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        text, error = get_llm_response(task, request.data.get("prompt", False), api_key, model, provider)
+        text, error = get_llm_response(task, request.data.get("prompt", False), api_key, model, provider, base_url)
         if not text and error:
             return Response(
                 {"error": "An internal error has occurred."},

@@ -32,30 +32,33 @@ export function InstanceAIForm(props: IInstanceAIForm) {
     formState: { errors, isSubmitting },
   } = useForm<AIFormValues>({
     defaultValues: {
+      LLM_PROVIDER: config["LLM_PROVIDER"] || "openai",
       LLM_API_KEY: config["LLM_API_KEY"],
       LLM_MODEL: config["LLM_MODEL"],
+      LLM_BASE_URL: config["LLM_BASE_URL"],
     },
   });
 
   const aiFormFields: TControllerInputFormField<AIFormValues>[] = [
     {
+      key: "LLM_PROVIDER",
+      type: "text",
+      label: "Provider",
+      description: (
+        <>
+          One of <code>openai</code>, <code>anthropic</code>, <code>gemini</code>, <code>zai</code>,{" "}
+          <code>zai-coding</code> or <code>openai-compatible</code>.
+        </>
+      ),
+      placeholder: "openai",
+      error: Boolean(errors.LLM_PROVIDER),
+      required: false,
+    },
+    {
       key: "LLM_MODEL",
       type: "text",
       label: "LLM Model",
-      description: (
-        <>
-          Choose an OpenAI engine.{" "}
-          <a
-            href="https://platform.openai.com/docs/models/overview"
-            target="_blank"
-            className="text-accent-primary hover:underline"
-            rel="noreferrer"
-            aria-label="OpenAI models documentation"
-          >
-            Learn more
-          </a>
-        </>
-      ),
+      description: <>The model name as the provider spells it, e.g. gpt-4o-mini or glm-5.3-flash.</>,
       placeholder: "gpt-4o-mini",
       error: Boolean(errors.LLM_MODEL),
       required: false,
@@ -64,22 +67,18 @@ export function InstanceAIForm(props: IInstanceAIForm) {
       key: "LLM_API_KEY",
       type: "password",
       label: "API key",
-      description: (
-        <>
-          You will find your API key{" "}
-          <a
-            href="https://platform.openai.com/api-keys"
-            target="_blank"
-            className="text-accent-primary hover:underline"
-            rel="noreferrer"
-            aria-label="OpenAI API keys page"
-          >
-            here.
-          </a>
-        </>
-      ),
+      description: <>The API key issued by the provider above.</>,
       placeholder: "sk-asddassdfasdefqsdfasd23das3dasdcasd",
       error: Boolean(errors.LLM_API_KEY),
+      required: false,
+    },
+    {
+      key: "LLM_BASE_URL",
+      type: "text",
+      label: "Base URL",
+      description: <>Leave empty to use the provider default. Required for openai-compatible endpoints.</>,
+      placeholder: "https://api.openai.com/v1",
+      error: Boolean(errors.LLM_BASE_URL),
       required: false,
     },
   ];
@@ -102,8 +101,10 @@ export function InstanceAIForm(props: IInstanceAIForm) {
     <div className="space-y-8">
       <div className="space-y-3">
         <div>
-          <div className="pb-1 text-18 font-medium text-primary">OpenAI</div>
-          <div className="text-13 font-regular text-tertiary">If you use ChatGPT, this is for you.</div>
+          <div className="pb-1 text-18 font-medium text-primary">LLM provider</div>
+          <div className="text-13 font-regular text-tertiary">
+            Any OpenAI-compatible provider works here - OpenAI, Z.AI (GLM), or your own gateway.
+          </div>
         </div>
         <div className="grid-col grid w-full grid-cols-1 items-center justify-between gap-x-12 gap-y-8 lg:grid-cols-3">
           {aiFormFields.map((field) => (
