@@ -45,7 +45,7 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     key: "billing-and-plans",
     i18n_label: "workspace_settings.settings.billing_and_plans.title",
     href: `/settings/billing`,
-    access: [EUserWorkspaceRoles.ADMIN],
+    access: [], // hidden: no role can see or open "Billing and plans"
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/billing/`,
   },
   export: {

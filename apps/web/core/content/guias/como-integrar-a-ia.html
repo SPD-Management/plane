@@ -1,0 +1,134 @@
+<!--
+  Conteúdo da página "Como integrar a IA" (/:workspaceSlug/guias/como-integrar-a-ia).
+  Edite este arquivo para mudar o que aparece na página.
+-->
+<h2>Parte 1 — A IA dentro do Atlas</h2>
+
+<h3>Passo 1 — Habilite a IA na instância</h3>
+<p>
+  Um administrador da instância abre o painel de administração, vai em <strong>IA</strong> e cadastra o provedor e a
+  chave de API que serão usados pelo Atlas.
+</p>
+
+<h3>Passo 2 — Use a IA dentro do produto</h3>
+<p>Com a IA habilitada, o assistente fica disponível no editor de páginas e na descrição dos itens de trabalho.</p>
+<ul>
+  <li>Selecione um trecho de texto para pedir um ajuste.</li>
+  <li>Peça um resumo do conteúdo da página.</li>
+</ul>
+
+<h3>Passo 3 — Boas práticas</h3>
+<ul>
+  <li>Nunca cole credenciais ou dados sensíveis nos comandos.</li>
+  <li>Revise sempre o texto gerado antes de publicar.</li>
+</ul>
+
+<h2>Parte 2 — Conecte a sua IA ao Atlas</h2>
+<p>
+  A parte 1 é a IA <em>dentro</em> do Atlas. Esta parte é o contrário: como fazer o seu agente de IA — Claude Code,
+  Cursor, um script próprio — ler e escrever no Atlas. Há dois caminhos, e os dois usam o mesmo token.
+</p>
+<ul>
+  <li><strong>API REST</strong> — para scripts, automações e integrações.</li>
+  <li><strong>MCP</strong> — para o seu agente conversar com o Atlas em linguagem natural. É a opção recomendada.</li>
+</ul>
+
+<h3>Passo 1 — Gere o seu token</h3>
+<p>
+  Abra <strong>Configurações → Perfil → Tokens de API</strong> e crie um token. Ele aparece
+  <strong>uma única vez</strong>, na hora da criação — copie e guarde num gerenciador de senhas.
+</p>
+<p>O link direto:</p>
+<pre><code>https://plane.speedio.com.br/settings/profile/api-tokens/</code></pre>
+<p>
+  O token é <strong>pessoal e age como você</strong>: tudo o que ele fizer aparece no Atlas com o seu nome, e ele
+  enxerga exatamente os projetos que você enxerga. Trate como senha.
+</p>
+
+<h3>Passo 2 — Anote os seus dados de conexão</h3>
+<ul>
+  <li><strong>URL da instância</strong> — <code>https://plane.speedio.com.br</code></li>
+  <li>
+    <strong>Slug do workspace</strong> — <code>speedio</code>. É o pedaço da URL logo depois do domínio, como em
+    <code>plane.speedio.com.br/speedio/projects/...</code>
+  </li>
+  <li><strong>Token</strong> — o que você gerou no passo anterior, no formato <code>plane_api_...</code></li>
+</ul>
+
+<h3>Passo 3 — Opção A: API REST</h3>
+<p>
+  A autenticação é pelo cabeçalho <code>X-API-Key</code> — não é <code>Authorization: Bearer</code>. A base de todas as
+  chamadas é <code>https://plane.speedio.com.br/api/v1/</code>.
+</p>
+<p>Teste rápido, listando os seus projetos:</p>
+<pre><code>curl -H "X-API-Key: SEU_TOKEN" \
+  https://plane.speedio.com.br/api/v1/workspaces/speedio/projects/</code></pre>
+<p>Os endpoints mais usados:</p>
+<ul>
+  <li><code>GET /api/v1/workspaces/speedio/projects/</code> — lista os projetos</li>
+  <li><code>GET /api/v1/workspaces/speedio/projects/&lt;project_id&gt;/issues/</code> — itens de trabalho do projeto</li>
+  <li><code>POST /api/v1/workspaces/speedio/projects/&lt;project_id&gt;/issues/</code> — cria um item de trabalho</li>
+  <li>
+    <code>GET /api/v1/workspaces/speedio/issues/&lt;IDENTIFICADOR&gt;-&lt;número&gt;/</code> — busca um item pelo código
+    que aparece na interface, como <code>ATLAS-1234</code>
+  </li>
+</ul>
+<p>Também existem rotas para ciclos, módulos, estados, etiquetas, membros, intake e anexos, no mesmo padrão.</p>
+<p>
+  As respostas de listagem vêm paginadas: o corpo traz <code>results</code> com os registros e
+  <code>next_cursor</code> para pedir a página seguinte.
+</p>
+
+<h3>Passo 4 — Opção B: MCP</h3>
+<p>
+  O MCP é o jeito de dar ao seu agente acesso ao Atlas sem você escrever chamada de API nenhuma. Você pede
+  <em>"abra um item de trabalho no projeto Vendas"</em> e ele resolve.
+</p>
+<p>Instale o servidor. Ele é um pacote Python, distribuído pelo <code>uv</code>:</p>
+<pre><code>uv tool install plane-mcp-server</code></pre>
+<p>Depois registre no Claude Code, de dentro da pasta do seu projeto:</p>
+<pre><code>claude mcp add -s local plane \
+  --env PLANE_API_KEY=SEU_TOKEN \
+  --env PLANE_WORKSPACE_SLUG=speedio \
+  --env PLANE_BASE_URL=https://plane.speedio.com.br \
+  -- ~/.local/bin/plane-mcp-server stdio</code></pre>
+<p>
+  Reinicie a sessão do agente e confira com <code>claude mcp list</code> — o servidor <code>plane</code> deve aparecer
+  como conectado. Em outros clientes, como Cursor ou Claude Desktop, a ideia é a mesma: comando
+  <code>plane-mcp-server stdio</code> e essas três variáveis de ambiente.
+</p>
+
+<h3>Passo 5 — Três armadilhas</h3>
+<ul>
+  <li>
+    <strong>Não use <code>uvx plane-mcp-server</code> direto no comando do MCP.</strong> Na primeira execução ele baixa
+    dezenas de pacotes e estoura o limite de 30 segundos de conexão, e o servidor aparece como
+    <em>failed to connect</em>. Instale antes com <code>uv tool install</code> e aponte para o binário, como no passo
+    anterior.
+  </li>
+  <li>
+    <strong>Sempre defina o <code>PLANE_BASE_URL</code>.</strong> Sem ele o servidor tenta falar com
+    <code>api.plane.so</code>, que é o Plane na nuvem, e o seu token daqui não vale lá.
+  </li>
+  <li>
+    <strong>Não deixe o token dentro do repositório.</strong> O <code>-s local</code> do comando acima guarda a
+    configuração fora do projeto, justamente para o token não acabar num commit. Se ele vazar, revogue na mesma tela em
+    que foi criado e gere outro — revogar é imediato.
+  </li>
+</ul>
+
+<h3>Passo 6 — O que dá para pedir</h3>
+<p>
+  Com o MCP ligado, o agente enxerga projetos, itens de trabalho, ciclos, módulos, páginas, membros, comentários,
+  anexos e apontamentos de hora. Alguns pedidos que funcionam bem:
+</p>
+<ul>
+  <li>"Liste os itens de trabalho em andamento no projeto CS."</li>
+  <li>"Abra um bug no [Tech]Atlas com o resumo desta conversa e me atribua."</li>
+  <li>"O que entrou no ciclo atual de Vendas?"</li>
+  <li>"Comente no ATLAS-1234 explicando o que foi corrigido."</li>
+</ul>
+<p>
+  Vale a mesma regra da parte 1: o agente age com as suas permissões e em nome do seu usuário. Confira o que ele
+  propõe antes de deixar escrever.
+</p>
