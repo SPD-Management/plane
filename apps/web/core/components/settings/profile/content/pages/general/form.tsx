@@ -78,8 +78,8 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
       display_name: user.display_name || "",
       email: user.email || "",
       role: profile.role || "Product / Project Manager",
-      language: profile.language || "en",
-      user_timezone: user.user_timezone || "Asia/Kolkata",
+      language: profile.language || "pt-BR",
+      user_timezone: user.user_timezone || "America/Sao_Paulo",
     },
   });
   // derived values
