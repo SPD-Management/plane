@@ -2,12 +2,17 @@
   Conteúdo da página "Como integrar a IA" (/:workspaceSlug/guias/como-integrar-a-ia).
   Edite este arquivo para mudar o que aparece na página.
 -->
-<h2>Parte 1 — A IA dentro do Atlas</h2>
+<p>
+  A ideia desta página é usar IA no dia a dia de planejamento e de gestão de tarefas: escrever melhor um item de
+  trabalho, resumir o que aconteceu num ciclo, abrir e atualizar tarefas sem sair da conversa com o seu agente.
+</p>
+
+<h2>Parte 1 — A IA dentro da plataforma</h2>
 
 <h3>Passo 1 — Habilite a IA na instância</h3>
 <p>
   Um administrador da instância abre o painel de administração, vai em <strong>IA</strong> e cadastra o provedor e a
-  chave de API que serão usados pelo Atlas.
+  chave de API que serão usados pela plataforma.
 </p>
 
 <h3>Passo 2 — Use a IA dentro do produto</h3>
@@ -23,14 +28,17 @@
   <li>Revise sempre o texto gerado antes de publicar.</li>
 </ul>
 
-<h2>Parte 2 — Conecte a sua IA ao Atlas</h2>
+<h2>Parte 2 — Conecte a sua IA aos seus projetos</h2>
 <p>
-  A parte 1 é a IA <em>dentro</em> do Atlas. Esta parte é o contrário: como fazer o seu agente de IA — Claude Code,
-  Cursor, um script próprio — ler e escrever no Atlas. Há dois caminhos, e os dois usam o mesmo token.
+  A parte 1 é a IA <em>dentro</em> do produto. Esta parte é o contrário: como fazer o seu agente de IA — Claude Code,
+  Cursor, um script próprio — ler e escrever nos seus projetos, para que ele participe do planejamento e da gestão das
+  tarefas. Há dois caminhos, e os dois usam o mesmo token.
 </p>
 <ul>
   <li><strong>API REST</strong> — para scripts, automações e integrações.</li>
-  <li><strong>MCP</strong> — para o seu agente conversar com o Atlas em linguagem natural. É a opção recomendada.</li>
+  <li>
+    <strong>MCP</strong> — para o seu agente consultar e mexer nas tarefas em linguagem natural. É a opção recomendada.
+  </li>
 </ul>
 
 <h3>Passo 1 — Gere o seu token</h3>
@@ -41,8 +49,8 @@
 <p>O link direto:</p>
 <pre><code>https://plane.speedio.com.br/settings/profile/api-tokens/</code></pre>
 <p>
-  O token é <strong>pessoal e age como você</strong>: tudo o que ele fizer aparece no Atlas com o seu nome, e ele
-  enxerga exatamente os projetos que você enxerga. Trate como senha.
+  O token é <strong>pessoal e age como você</strong>: tudo o que ele fizer aparece com o seu nome, e ele enxerga
+  exatamente os projetos que você enxerga. Trate como senha.
 </p>
 
 <h3>Passo 2 — Anote os seus dados de conexão</h3>
@@ -70,7 +78,7 @@
   <li><code>POST /api/v1/workspaces/speedio/projects/&lt;project_id&gt;/issues/</code> — cria um item de trabalho</li>
   <li>
     <code>GET /api/v1/workspaces/speedio/issues/&lt;IDENTIFICADOR&gt;-&lt;número&gt;/</code> — busca um item pelo código
-    que aparece na interface, como <code>ATLAS-1234</code>
+    que aparece na interface, como <code>VENDAS-1234</code>
   </li>
 </ul>
 <p>Também existem rotas para ciclos, módulos, estados, etiquetas, membros, intake e anexos, no mesmo padrão.</p>
@@ -81,7 +89,7 @@
 
 <h3>Passo 4 — Opção B: MCP</h3>
 <p>
-  O MCP é o jeito de dar ao seu agente acesso ao Atlas sem você escrever chamada de API nenhuma. Você pede
+  O MCP é o jeito de dar ao seu agente acesso aos projetos sem você escrever chamada de API nenhuma. Você pede
   <em>"abra um item de trabalho no projeto Vendas"</em> e ele resolve.
 </p>
 <p>Instale o servidor. Ele é um pacote Python, distribuído pelo <code>uv</code>:</p>
@@ -108,7 +116,7 @@
   </li>
   <li>
     <strong>Sempre defina o <code>PLANE_BASE_URL</code>.</strong> Sem ele o servidor tenta falar com
-    <code>api.plane.so</code>, que é o Plane na nuvem, e o seu token daqui não vale lá.
+    <code>api.plane.so</code>, que é o serviço na nuvem, e o seu token daqui não vale lá.
   </li>
   <li>
     <strong>Não deixe o token dentro do repositório.</strong> O <code>-s local</code> do comando acima guarda a
@@ -120,13 +128,14 @@
 <h3>Passo 6 — O que dá para pedir</h3>
 <p>
   Com o MCP ligado, o agente enxerga projetos, itens de trabalho, ciclos, módulos, páginas, membros, comentários,
-  anexos e apontamentos de hora. Alguns pedidos que funcionam bem:
+  anexos e apontamentos de hora. Alguns pedidos que ajudam no planejamento e na gestão das tarefas:
 </p>
 <ul>
   <li>"Liste os itens de trabalho em andamento no projeto CS."</li>
-  <li>"Abra um bug no [Tech]Atlas com o resumo desta conversa e me atribua."</li>
-  <li>"O que entrou no ciclo atual de Vendas?"</li>
-  <li>"Comente no ATLAS-1234 explicando o que foi corrigido."</li>
+  <li>"Abra um bug no projeto Operações com o resumo desta conversa e me atribua."</li>
+  <li>"O que entrou no ciclo atual de Vendas? O que ficou para trás?"</li>
+  <li>"Quebre esta demanda em tarefas menores e crie cada uma no projeto Marketing."</li>
+  <li>"Comente no VENDAS-1234 explicando o que foi corrigido."</li>
 </ul>
 <p>
   Vale a mesma regra da parte 1: o agente age com as suas permissões e em nome do seu usuário. Confira o que ele
