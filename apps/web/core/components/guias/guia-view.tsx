@@ -5,6 +5,8 @@
  */
 
 import { observer } from "mobx-react";
+import Markdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 // plane imports
 import { ERowVariant, Row } from "@plane/ui";
 import { cn } from "@plane/utils";
@@ -18,13 +20,75 @@ type Props = {
 };
 
 /**
- * Renders a static guide with the exact DOM structure a Page uses
- * (#page-content-container > .frame-renderer > .editor-container > .ProseMirror),
- * so it inherits the editor's typography, widths and spacing.
- *
- * The HTML comes from a file in the repo, never from user input, which is why
- * it is injected directly.
+ * `.ProseMirror` is styled for an editor: `white-space: pre-wrap`, so the newlines
+ * react-markdown leaves between blocks would render as blank lines, and a text
+ * caret over content nobody can type into. Both live in an unlayered stylesheet,
+ * which outranks any Tailwind utility — hence the inline style.
  */
+const READ_ONLY_STYLE = { whiteSpace: "normal", cursor: "auto" } as const;
+
+/**
+ * The document editor tags every node it renders, and the stylesheet in
+ * @plane/editor keys off those classes: `editor-heading-block` and
+ * `editor-paragraph-block` carry the font sizes and the vertical rhythm, while
+ * `.editor-container.document-editor .ProseMirror > *` is what constrains the
+ * content to `--editor-content-width` and centers it. Markdown gives us plain
+ * tags, so we put the same classes back on the way out — without them the page
+ * renders unstyled and edge to edge.
+ */
+const MARKDOWN_COMPONENTS: Components = {
+  h1: ({ node: _node, children, ...props }) => (
+    <h1 className="editor-heading-block" {...props}>
+      {children}
+    </h1>
+  ),
+  h2: ({ node: _node, children, ...props }) => (
+    <h2 className="editor-heading-block" {...props}>
+      {children}
+    </h2>
+  ),
+  h3: ({ node: _node, children, ...props }) => (
+    <h3 className="editor-heading-block" {...props}>
+      {children}
+    </h3>
+  ),
+  h4: ({ node: _node, children, ...props }) => (
+    <h4 className="editor-heading-block" {...props}>
+      {children}
+    </h4>
+  ),
+  h5: ({ node: _node, children, ...props }) => (
+    <h5 className="editor-heading-block" {...props}>
+      {children}
+    </h5>
+  ),
+  h6: ({ node: _node, children, ...props }) => (
+    <h6 className="editor-heading-block" {...props}>
+      {children}
+    </h6>
+  ),
+  p: ({ node: _node, ...props }) => <p className="editor-paragraph-block" {...props} />,
+  ul: ({ node: _node, ...props }) => <ul className="list-disc space-y-(--list-spacing-y) pl-7" {...props} />,
+  ol: ({ node: _node, ...props }) => <ol className="list-decimal space-y-(--list-spacing-y) pl-7" {...props} />,
+  li: ({ node: _node, ...props }) => <li className="not-prose space-y-2" {...props} />,
+  // the markdown files are ours, but every link in them still leaves the app.
+  // the classes are the ones the editor's link extension applies.
+  a: ({ node: _node, children, ...props }) => (
+    <a
+      className="cursor-pointer text-accent-secondary underline underline-offset-[3px] transition-colors hover:text-accent-primary"
+      target="_blank"
+      rel="noopener noreferrer"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  // code blocks have no editor node view here, so they get their frame from us
+  pre: ({ node: _node, ...props }) => (
+    <pre className="my-2 overflow-x-auto rounded-md border border-subtle bg-layer-1 p-3" {...props} />
+  ),
+};
+
 export const GuiaView = observer(function GuiaView(props: Props) {
   const { guia } = props;
   // page filters — same font/width preferences the user set on Pages
@@ -45,20 +109,21 @@ export const GuiaView = observer(function GuiaView(props: Props) {
         >
           <div className="relative w-full py-3">
             <div className={cn(containerClassName, "page-title-editor border-none bg-transparent py-3")}>
-              <h1 className="text-[2rem] leading-[2.375rem] font-bold tracking-[-2%] break-words">{guia.label}</h1>
+              {/* the title takes its width and font size from `.page-title-editor .ProseMirror` */}
+              <div className="ProseMirror" style={READ_ONLY_STYLE}>
+                <h1 className="break-words">{guia.label}</h1>
+              </div>
             </div>
           </div>
-          <div className={cn(containerClassName, "h-full p-0 pb-64")}>
-            {/* oxlint-disable-next-line react/no-danger */}
+          <div className={cn(containerClassName, "document-editor h-full p-0 pb-64")}>
             <div
-              // the hand-written HTML has no editor node classes, so code blocks get their
-              // padding, background and horizontal scroll from here
-              className="ProseMirror [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-subtle [&_pre]:bg-layer-1 [&_pre]:p-3"
-              // .ProseMirror sets `white-space: pre-wrap`, which is right for editor-generated
-              // markup but would preserve the indentation of the hand-written HTML files.
-              style={{ whiteSpace: "normal" }}
-              dangerouslySetInnerHTML={{ __html: guia.content }}
-            />
+              className="ProseMirror prose-brand prose-headings:font-display font-default max-w-full prose"
+              style={READ_ONLY_STYLE}
+            >
+              <Markdown components={MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
+                {guia.content}
+              </Markdown>
+            </div>
           </div>
         </div>
       </div>
