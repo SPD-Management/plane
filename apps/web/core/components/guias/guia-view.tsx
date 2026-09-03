@@ -51,7 +51,9 @@ export const GuiaView = observer(function GuiaView(props: Props) {
           <div className={cn(containerClassName, "h-full p-0 pb-64")}>
             {/* oxlint-disable-next-line react/no-danger */}
             <div
-              className="ProseMirror"
+              // the hand-written HTML has no editor node classes, so code blocks get their
+              // padding, background and horizontal scroll from here
+              className="ProseMirror [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-subtle [&_pre]:bg-layer-1 [&_pre]:p-3"
               // .ProseMirror sets `white-space: pre-wrap`, which is right for editor-generated
               // markup but would preserve the indentation of the hand-written HTML files.
               style={{ whiteSpace: "normal" }}

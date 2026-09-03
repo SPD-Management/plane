@@ -8,6 +8,7 @@
 import comoIntegrarAIaContent from "../../content/guias/como-integrar-a-ia.html?raw";
 import ferramentasContent from "../../content/guias/ferramentas.html?raw";
 import guiaDeUsoContent from "../../content/guias/guia-de-uso.html?raw";
+import integracaoGoogleChatContent from "../../content/guias/integracao-google-chat.html?raw";
 import nossasFerramentasContent from "../../content/guias/nossas-ferramentas.html?raw";
 import novidadesNoAtlasContent from "../../content/guias/novidades-no-atlas.html?raw";
 import sobreASpeedioContent from "../../content/guias/sobre-a-speedio.html?raw";
@@ -58,6 +59,11 @@ export const GUIAS: TGuia[] = [
     slug: "como-integrar-a-ia",
     label: "Como integrar a IA",
     content: comoIntegrarAIaContent,
+  },
+  {
+    slug: "integracao-google-chat",
+    label: "Integração com Google Chat",
+    content: integracaoGoogleChatContent,
   },
 ];
 

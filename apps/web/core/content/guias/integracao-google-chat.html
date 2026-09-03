@@ -1,0 +1,231 @@
+<!--
+  Conteúdo da página "Integração com Google Chat" (/:workspaceSlug/guias/integracao-google-chat).
+  Edite este arquivo para mudar o que aparece na página.
+-->
+<p>
+  A ideia é simples: quando alguma coisa acontece no Atlas — um item de trabalho é criado, muda de status, ganha um
+  comentário — um recado aparece no espaço do Google Chat da equipe. Este guia mostra o caminho inteiro, do webhook do
+  Chat até o Atlas mandando os eventos.
+</p>
+
+<h2>Antes de começar</h2>
+<ul>
+  <li>Uma conta <strong>Google Workspace</strong> (Business ou Enterprise). Conta pessoal <code>@gmail.com</code> não cria webhook.</li>
+  <li>Ser membro de um <strong>espaço</strong> do Google Chat. Webhook não funciona em conversa direta, só em espaço.</li>
+  <li>Ser <strong>administrador do workspace</strong> no Atlas, que é quem enxerga a tela de webhooks.</li>
+</ul>
+
+<h2>Passo 1 — Crie o webhook no Google Chat</h2>
+<ol>
+  <li>Abra o <a href="https://chat.google.com">Google Chat</a> no navegador e entre no espaço que vai receber os avisos.</li>
+  <li>Clique no <strong>nome do espaço</strong>, no topo, para abrir o menu.</li>
+  <li>Escolha <strong>Apps e integrações</strong>.</li>
+  <li>Clique em <strong>Adicionar webhooks</strong>.</li>
+  <li>
+    Dê um nome — <code>Atlas</code> — e, se quiser um ícone, cole a URL de uma imagem no campo
+    <strong>URL do avatar</strong>.
+  </li>
+  <li>Clique em <strong>Salvar</strong>, depois em <strong>Mais</strong> → <strong>Copiar link</strong>.</li>
+</ol>
+<p>A URL copiada tem esta cara:</p>
+<pre><code>https://chat.googleapis.com/v1/spaces/AAAA1111bbb/messages?key=CHAVE&amp;token=TOKEN</code></pre>
+<p>
+  <strong>Essa URL é a senha do espaço.</strong> Quem tiver ela posta mensagens no espaço como se fosse o app. Não
+  cole em item de trabalho, em página do Atlas nem em commit. Se vazar, apague o webhook na mesma tela e crie outro.
+</p>
+
+<h2>Passo 2 — Teste o webhook</h2>
+<p>Antes de envolver o Atlas, confirme que a URL funciona. No terminal:</p>
+<pre><code>curl -X POST "URL_DO_WEBHOOK" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Oi, aqui é o Atlas."}'</code></pre>
+<p>A mensagem tem que aparecer no espaço na hora. O corpo aceita formatação simples:</p>
+<ul>
+  <li><code>*negrito*</code></li>
+  <li><code>_itálico_</code></li>
+  <li><code>~riscado~</code></li>
+  <li><code>`monoespaçado`</code></li>
+  <li><code>&lt;https://exemplo.com|texto do link&gt;</code></li>
+  <li><code>&lt;users/all&gt;</code> para notificar todo mundo do espaço</li>
+</ul>
+<p>
+  O Chat aceita <strong>1 requisição por segundo</strong> por espaço, somando todos os webhooks dele. Vale lembrar
+  disso antes de mandar avisar cada mudança de campo.
+</p>
+
+<h2>Passo 3 — Entenda o que o Atlas manda</h2>
+<p>
+  Em <strong>Configurações do workspace → Webhooks</strong> você cadastra uma URL e escolhe os eventos:
+  <strong>projetos</strong>, <strong>itens de trabalho</strong>, <strong>módulos</strong>, <strong>ciclos</strong> e
+  <strong>comentários</strong>. A cada evento o Atlas faz um <code>POST</code> com este corpo:
+</p>
+<pre><code>{
+  "event": "issue",
+  "action": "create",
+  "webhook_id": "...",
+  "workspace_id": "...",
+  "workspace_slug": "speedio",
+  "data": { "id": "...", "name": "...", "state": "...", "..." : "..." },
+  "activity": { "actor": { "...": "..." }, "field": "state", "old_value": "...", "new_value": "..." }
+}</code></pre>
+<p>E manda junto os cabeçalhos:</p>
+<ul>
+  <li><code>X-Plane-Event</code> — o tipo do evento (<code>issue</code>, <code>project</code>, ...)</li>
+  <li><code>X-Plane-Delivery</code> — um identificador único da entrega</li>
+  <li>
+    <code>X-Plane-Signature</code> — HMAC-SHA256 do corpo, assinado com a chave secreta
+    (<code>plane_wh_...</code>) que aparece <strong>uma única vez</strong> quando o webhook é criado
+  </li>
+</ul>
+<p>
+  <strong>Aqui está a pegadinha:</strong> não dá para apontar o webhook do Atlas direto para a URL do Google Chat. O
+  Chat só aceita um corpo com <code>text</code> ou <code>cardsV2</code>; recebendo o JSON do Atlas ele devolve erro
+  400. Falta alguém no meio para traduzir — é o passo 4.
+</p>
+
+<h2>Passo 4 — O tradutor no meio</h2>
+<p>
+  É um serviço minúsculo: recebe o evento do Atlas, confere a assinatura, monta a frase e repassa ao Chat. Pode rodar
+  em Cloud Run, Cloud Functions, n8n, Make — qualquer lugar com uma URL pública em HTTPS (o Atlas recusa
+  <code>localhost</code>).
+</p>
+<p>Um exemplo completo, em Python com Flask:</p>
+<pre><code>import hashlib
+import hmac
+import json
+import os
+
+import requests
+from flask import Flask, request
+
+app = Flask(__name__)
+
+PLANE_SECRET = os.environ["PLANE_WEBHOOK_SECRET"]   # plane_wh_...
+CHAT_WEBHOOK = os.environ["GOOGLE_CHAT_WEBHOOK"]    # https://chat.googleapis.com/v1/spaces/...
+ATLAS_URL = "https://plane.speedio.com.br"
+
+
+@app.post("/atlas")
+def atlas():
+    # 1. confere que o recado veio mesmo do Atlas
+    assinatura = request.headers.get("X-Plane-Signature", "")
+    esperada = hmac.new(
+        PLANE_SECRET.encode(),
+        request.get_data(),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(assinatura, esperada):
+        return "assinatura inválida", 401
+
+    corpo = request.get_json()
+    if corpo.get("event") != "issue":
+        return "", 204
+
+    dados = corpo.get("data") or {}
+    acao = {"create": "criou", "update": "atualizou", "delete": "apagou"}.get(corpo.get("action"), corpo.get("action"))
+    quem = ((corpo.get("activity") or {}).get("actor") or {}).get("display_name", "alguém")
+    titulo = dados.get("name", "sem título")
+    link = f"{ATLAS_URL}/{corpo['workspace_slug']}/browse/{dados.get('sequence_id', '')}/"
+
+    texto = f"*{quem}* {acao} um item de trabalho: &lt;{link}|{titulo}&gt;"
+
+    # 2. repassa para o Google Chat
+    requests.post(CHAT_WEBHOOK, json={"text": texto}, timeout=10)
+    return "", 204
+</code></pre>
+<p>
+  Publique isso, pegue a URL pública e cadastre em <strong>Configurações do workspace → Webhooks →
+  Adicionar webhook</strong>, marcando só os eventos que interessam. Guarde a chave secreta na variável
+  <code>PLANE_WEBHOOK_SECRET</code> — ela é o que garante que o <code>POST</code> veio mesmo do Atlas, e não de
+  alguém que descobriu a URL.
+</p>
+
+<h2>Passo 5 — Deixando mais bonito com um card</h2>
+<p>Em vez de <code>text</code>, o Chat aceita <code>cardsV2</code>, que rende um bloco com título e campos:</p>
+<pre><code>{
+  "cardsV2": [
+    {
+      "cardId": "atlas-item",
+      "card": {
+        "header": {
+          "title": "ATLAS-1234",
+          "subtitle": "Item de trabalho atualizado"
+        },
+        "sections": [
+          {
+            "widgets": [
+              { "textParagraph": { "text": "&lt;b&gt;Status:&lt;/b&gt; Em andamento" } },
+              { "textParagraph": { "text": "&lt;b&gt;Responsável:&lt;/b&gt; Maria" } }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}</code></pre>
+<p>
+  Dentro do card o texto aceita HTML simples: <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>,
+  <code>&lt;a&gt;</code>, <code>&lt;br&gt;</code> e <code>&lt;code&gt;</code>.
+</p>
+<p>
+  Para agrupar as mensagens de um mesmo item numa conversa só, mande também um <code>thread</code> com uma chave
+  estável — o código do item serve bem — e acrescente o parâmetro na URL:
+</p>
+<pre><code>POST URL_DO_WEBHOOK&amp;messageReplyOption=REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD
+
+{
+  "text": "Status mudou para Concluído",
+  "thread": { "threadKey": "ATLAS-1234" }
+}</code></pre>
+
+<h2>Passo 6 — Sem servidor: um resumo por dia pela API</h2>
+<p>
+  Se montar o serviço do passo 4 for demais para o caso de vocês, dá para inverter: em vez de o Atlas avisar, um
+  script pergunta ao Atlas e posta um resumo. Roda num cron, não precisa de URL pública e usa a mesma API descrita em
+  <em>Como integrar a IA</em>.
+</p>
+<pre><code>import os
+import requests
+
+ATLAS = "https://plane.speedio.com.br/api/v1"
+HEADERS = {"X-API-Key": os.environ["PLANE_API_KEY"]}
+PROJETO = os.environ["PROJECT_ID"]
+
+itens = requests.get(
+    f"{ATLAS}/workspaces/speedio/projects/{PROJETO}/issues/",
+    headers=HEADERS,
+    timeout=30,
+).json()["results"]
+
+linhas = [f"• {i['name']}" for i in itens[:10]]
+texto = "*Itens de trabalho do projeto hoje*\n" + "\n".join(linhas)
+
+requests.post(os.environ["GOOGLE_CHAT_WEBHOOK"], json={"text": texto}, timeout=10)
+</code></pre>
+<p>
+  O token da API sai de <strong>Configurações → Perfil → Tokens de API</strong> e age em seu nome, com as suas
+  permissões. As listagens vêm paginadas: use <code>next_cursor</code> quando precisar de mais de uma página.
+</p>
+
+<h2>Quando não funciona</h2>
+<ul>
+  <li>
+    <strong>O Chat responde 400.</strong> O corpo não tem <code>text</code> nem <code>cardsV2</code> — quase sempre é
+    o webhook do Atlas apontado direto para o Chat, sem o tradutor do passo 4.
+  </li>
+  <li>
+    <strong>O Chat responde 404.</strong> A URL do webhook foi apagada ou o espaço não existe mais. Gere outra.
+  </li>
+  <li>
+    <strong>Chegam mensagens demais.</strong> Filtre por <code>event</code> e por <code>activity.field</code> no
+    tradutor, e marque menos eventos na tela de webhooks do Atlas. Lembre do limite de 1 mensagem por segundo.
+  </li>
+  <li>
+    <strong>O Atlas recusa a URL.</strong> Ele só aceita <code>http</code>/<code>https</code> e bloqueia
+    <code>localhost</code> e <code>127.0.0.1</code>. Para testar da sua máquina, exponha com um túnel.
+  </li>
+  <li>
+    <strong>A assinatura nunca bate.</strong> Assine os <em>bytes crus</em> do corpo
+    (<code>request.get_data()</code>), não o JSON reserializado — qualquer diferença de espaço muda o hash.
+  </li>
+</ul>
