@@ -1,0 +1,29 @@
+# Overlay for local development with the SPD extension layer (plane.spd) enabled.
+#
+#   docker compose -f docker-compose-local.yml -f docker-compose.spd.yml up -d
+#
+# The stock entrypoints hardcode --settings=plane.settings.local, so the api and
+# migrator commands are overridden here; worker/beat read DJANGO_SETTINGS_MODULE.
+# Put SPD_* and LLM_* variables in apps/api/.env (see docs/spd-extensions.md).
+services:
+  api:
+    environment:
+      DJANGO_SETTINGS_MODULE: plane.settings.spd_local
+    command: >
+      bash -c "python manage.py wait_for_db &&
+      python manage.py wait_for_migrations &&
+      python manage.py register_instance \"$$(hostname)\" &&
+      python manage.py configure_instance &&
+      python manage.py create_bucket &&
+      python manage.py clear_cache &&
+      python manage.py runserver 0.0.0.0:8000"
+  worker:
+    environment:
+      DJANGO_SETTINGS_MODULE: plane.settings.spd_local
+  beat-worker:
+    environment:
+      DJANGO_SETTINGS_MODULE: plane.settings.spd_local
+  migrator:
+    environment:
+      DJANGO_SETTINGS_MODULE: plane.settings.spd_local
+    command: ./bin/docker-entrypoint-migrator.sh --settings=plane.settings.spd_local
