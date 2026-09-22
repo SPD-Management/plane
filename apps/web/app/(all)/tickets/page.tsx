@@ -96,7 +96,7 @@ export default function PublicTicketFormPage() {
 
     e.target.value = "";
   };
-
+  // Remove file from state
   const handleRemoveFile = (id: string) => {
     setEvidencias((prev) => prev.filter((item) => item.id !== id));
   };
