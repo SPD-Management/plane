@@ -116,8 +116,16 @@ export default function PublicTicketFormPage() {
 
     setIsSubmitting(true);
 
-    const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:8000";
-    const projectId = (import.meta as any).env?.VITE_PLANE_PROJECT_ID || "c3615582-e0c3-450e-a46a-79abbc2a680d";
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_TICKET_API_URL ||
+      (import.meta as any).env?.VITE_API_BASE_URL ||
+      "";
+
+    const projectId =
+      process.env.NEXT_PUBLIC_PLANE_PROJECT_ID ||
+      (import.meta as any).env?.VITE_PLANE_PROJECT_ID ||
+      "c3615582-e0c3-450e-a46a-79abbc2a680d";
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/v1/public/submit-ticket/`, {

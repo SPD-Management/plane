@@ -25,6 +25,13 @@ class PublicTicketEndpoint(APIView):
     """
     permission_classes = [AllowAny]
 
+    def options(self, request, *args, **kwargs):
+        response = Response(status=status.HTTP_200_OK)
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        return response
+
     def post(self, request):
         data = request.data
         solicitante = str(data.get("solicitante", "") or "").strip()
