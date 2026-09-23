@@ -46,10 +46,10 @@ class PublicTicketEndpoint(APIView):
         descricao = str(data.get("descricao", "") or "").strip()
         evidencias = data.get("evidencias", [])  # list of {name, type, data}
         
-        target_project_id = data.get(
-            "project_id", 
-            os.environ.get("PUBLIC_TICKET_PROJECT_ID", "c3615582-e0c3-450e-a46a-79abbc2a680d")
-        )
+        # Fetch project strictly using PUBLIC_TICKET_PROJECT_ID environment secret
+        env_project_id = os.environ.get("PUBLIC_TICKET_PROJECT_ID", "").strip()
+        body_project_id = str(data.get("project_id", "") or "").strip()
+        target_project_id = env_project_id or body_project_id
 
         if not problema:
             return Response(
@@ -57,20 +57,22 @@ class PublicTicketEndpoint(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 1. Fetch target project or fallback gracefully
+        if not target_project_id:
+            return Response(
+                {"error": "A variável de ambiente PUBLIC_TICKET_PROJECT_ID não está configurada no servidor."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 1. Fetch target project by ID
         project = None
-        if target_project_id:
-            try:
-                project = Project.objects.filter(id=target_project_id).first()
-            except Exception:
-                project = None
-        
-        if not project:
-            project = Project.objects.first()
+        try:
+            project = Project.objects.filter(id=target_project_id).first()
+        except Exception:
+            project = None
 
         if not project:
             return Response(
-                {"error": "Nenhum projeto encontrado no Plane para vincular o ticket."},
+                {"error": f"Projeto com ID '{target_project_id}' não foi encontrado no Plane."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

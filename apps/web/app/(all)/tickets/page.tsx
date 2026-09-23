@@ -123,9 +123,24 @@ export default function PublicTicketFormPage() {
       "";
 
     const projectId =
-      process.env.NEXT_PUBLIC_PLANE_PROJECT_ID ||
-      (import.meta as any).env?.VITE_PLANE_PROJECT_ID ||
-      "c3615582-e0c3-450e-a46a-79abbc2a680d";
+      process.env.NEXT_PUBLIC_PLANE_PROJECT_ID || (import.meta as any).env?.VITE_PLANE_PROJECT_ID || undefined;
+
+    const payload: Record<string, any> = {
+      solicitante,
+      email,
+      lista_filtro: listaFiltroUrl,
+      problema,
+      descricao,
+      evidencias: evidencias.map((ev) => ({
+        name: ev.name,
+        type: ev.type,
+        data: ev.data,
+      })),
+    };
+
+    if (projectId) {
+      payload.project_id = projectId;
+    }
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/v1/public/submit-ticket/`, {
@@ -133,19 +148,7 @@ export default function PublicTicketFormPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          solicitante,
-          email,
-          lista_filtro: listaFiltroUrl,
-          problema,
-          descricao,
-          project_id: projectId,
-          evidencias: evidencias.map((ev) => ({
-            name: ev.name,
-            type: ev.type,
-            data: ev.data,
-          })),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
