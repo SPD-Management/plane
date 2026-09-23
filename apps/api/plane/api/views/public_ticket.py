@@ -12,11 +12,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 from plane.db.models import Project, Issue, State, FileAsset
 from plane.db.models.issue import IssueAttachment
 from plane.settings.storage import S3Storage
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PublicTicketEndpoint(APIView):
     """
     Public endpoint for receiving support tickets from external forms without auth.
@@ -24,6 +28,7 @@ class PublicTicketEndpoint(APIView):
     appear both inside the Tiptap editor description and in the Plane attachments section.
     """
     permission_classes = [AllowAny]
+    authentication_classes = ()
 
     def options(self, request, *args, **kwargs):
         response = Response(status=status.HTTP_200_OK)
