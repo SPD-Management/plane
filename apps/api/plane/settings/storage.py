@@ -17,12 +17,26 @@ from storages.backends.s3boto3 import S3Boto3Storage
 
 
 class S3Storage(S3Boto3Storage):
+    file_overwrite = True
+    location = ""
+    object_parameters = {}
+    custom_domain = None
+    querystring_auth = True
+    default_acl = None
+
     def url(self, name, parameters=None, expire=None, http_method=None):
         return name
 
     """S3 storage class to generate presigned URLs for S3 objects"""
 
-    def __init__(self, request=None):
+    def __init__(self, request=None, **kwargs):
+        super().__init__(**kwargs)
+        self.location = ""
+        self.file_overwrite = True
+        self.object_parameters = {}
+        self.custom_domain = None
+        self.querystring_auth = True
+        self.default_acl = None
         # Get the AWS credentials and bucket name from the environment
         self.aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
         # Use the AWS_SECRET_ACCESS_KEY environment variable for the secret key
@@ -32,7 +46,11 @@ class S3Storage(S3Boto3Storage):
         # Use the AWS_REGION environment variable for the region
         self.aws_region = os.environ.get("AWS_REGION")
         # Use the AWS_S3_ENDPOINT_URL environment variable for the endpoint URL
-        self.aws_s3_endpoint_url = os.environ.get("AWS_S3_ENDPOINT_URL") or os.environ.get("MINIO_ENDPOINT_URL")
+        raw_endpoint = os.environ.get("AWS_S3_ENDPOINT_URL") or os.environ.get("MINIO_ENDPOINT_URL") or "http://plane-minio:9000"
+        if os.path.exists("/.dockerenv") and "localhost:9000" in raw_endpoint:
+            raw_endpoint = raw_endpoint.replace("localhost:9000", "plane-minio:9000")
+        self.endpoint_url = raw_endpoint
+        self.aws_s3_endpoint_url = raw_endpoint
         # Use the SIGNED_URL_EXPIRATION environment variable for the expiration time (default: 3600 seconds)
         self.signed_url_expiration = int(os.environ.get("SIGNED_URL_EXPIRATION", "3600"))
 
