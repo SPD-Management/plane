@@ -43,6 +43,9 @@ export const coreRoutes: RouteConfigEntry[] = [
     route("workspace-invitations", "./(all)/workspace-invitations/page.tsx"),
   ]),
 
+  // Public Support Form
+  route("tickets", "./(all)/tickets/page.tsx"),
+
   // ========================================================================
   // ALL APP ROUTES
   // ========================================================================
