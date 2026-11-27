@@ -40,6 +40,18 @@
 	}
 	header @hashedAssets Cache-Control "public, max-age=31536000, immutable"
 
+	# Everything else (index.html and the SPA fallback) must be revalidated on
+	# every load. Without a Cache-Control header the browser applies heuristic
+	# caching (10% of the Last-Modified age), so after a deploy users kept the
+	# previous index.html - and therefore the previous JS chunks - for days.
+	@notHashedAssets {
+		not {
+			path /god-mode/assets/*
+			file
+		}
+	}
+	header @notHashedAssets Cache-Control "no-cache"
+
 	# SPA fallback: the admin build is served from /god-mode
 	try_files {path} /god-mode/index.html
 	file_server
