@@ -282,6 +282,17 @@ minimumReleaseAgeExclude:
   - "@makeplane/propel@0.3.0"
 
 patchedDependencies:
+  # Two React 19 regressions in Headless UI, both already fixed upstream
+  # (tailwindlabs/headlessui#3908, #3421) and already patched the same way in
+  # makeplane/plane#9751:
+  #  - Frozen's cloneElement(child, { ref: null }) wipes out the ref every
+  #    dropdown uses to measure its floating panel, so react-popper never
+  #    computes a real position and panels render at their hardcoded (0,0).
+  #  - useInertOthers' containment check is one-directional, so it can mark a
+  #    combobox's own search input inert; an inert input can never receive the
+  #    focus() call that would otherwise exempt it, so every click inside the
+  #    open panel is silently swallowed.
+  '@headlessui/react@2.2.10': patches/@headlessui__react@2.2.10.patch
   react-color@2.19.3: patches/react-color@2.19.3.patch
 
 peerDependencyRules:
