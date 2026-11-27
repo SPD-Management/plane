@@ -17,8 +17,8 @@ import githubDarkModeImage from "@/app/assets/logos/github-white.png?url";
 // components
 import { AuthenticationMethodCard } from "@/components/authentication/authentication-method-card";
 import { PageWrapper } from "@/components/common/page-wrapper";
-import { Skeleton } from "@/components/common/skeleton";
-import { setPromiseToast } from "@/providers/toast";
+import { Skeleton } from "@plane/blocks/skeleton";
+import { setPromiseToast } from "@plane/blocks/toast";
 // hooks
 import { useInstance } from "@/hooks/store";
 // types
@@ -89,6 +89,7 @@ const InstanceGithubAuthenticationPage = observer(function InstanceGithubAuthent
           }
           config={
             <Switch
+              aria-label="Enable GitHub authentication"
               checked={isGithubEnabled}
               onCheckedChange={() => {
                 updateConfig("IS_GITHUB_ENABLED", isGithubEnabled ? "0" : "1");

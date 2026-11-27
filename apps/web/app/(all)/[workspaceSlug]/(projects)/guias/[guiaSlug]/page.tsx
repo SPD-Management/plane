@@ -6,8 +6,7 @@
 
 import Link from "next/link";
 // plane imports
-import { getButtonStyling } from "@plane/propel/button";
-import { cn } from "@plane/utils";
+import { Button as ButtonElement } from "@makeplane/propel/elements/button";
 // components
 import { PageHead } from "@/components/core/page-title";
 import { GuiaView } from "@/components/guias/guia-view";
@@ -25,9 +24,11 @@ export default function GuiaPage({ params }: Route.ComponentProps) {
       <div className="flex h-full w-full flex-col items-center justify-center">
         <h3 className="text-center text-16 font-semibold">Página não encontrada</h3>
         <p className="mt-3 text-center text-13 text-secondary">A página que você está tentando acessar não existe.</p>
-        <Link href={`/${workspaceSlug}`} className={cn(getButtonStyling("secondary", "base"), "mt-5")}>
-          Voltar para o início
-        </Link>
+        <div className="mt-5">
+          <ButtonElement variant="secondary" size="md" stretch="auto" render={<Link href={`/${workspaceSlug}`} />}>
+            Voltar para o início
+          </ButtonElement>
+        </div>
       </div>
     );
 

@@ -13,7 +13,8 @@ import { useTranslation } from "@plane/i18n";
 import { BoardOutline, CalendarOutline, ChevronDownOutline, ListOutline } from "@makeplane/propel/icons";
 import type { IIssueDisplayFilterOptions, IIssueDisplayProperties, EIssueLayoutTypes } from "@plane/types";
 import { EIssuesStoreType } from "@plane/types";
-import { CustomMenu } from "@plane/ui";
+import { Icon } from "@makeplane/propel/components/icon";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@makeplane/propel/components/menu";
 // components
 import { WorkItemsModal } from "@/components/analytics/work-items/modal";
 import { DisplayFiltersSelection, FiltersDropdown } from "@/components/issues/issue-layouts/filters";
@@ -97,35 +98,33 @@ export const CycleIssuesMobileHeader = observer(function CycleIssuesMobileHeader
         cycleDetails={cycleDetails ?? undefined}
       />
       <div className="flex justify-evenly border-b border-subtle bg-surface-1 py-2 md:hidden">
-        <CustomMenu
-          maxHeight={"md"}
-          className="flex flex-grow justify-center text-13 text-secondary"
-          placement="bottom-start"
-          customButton={
-            <span className="flex flex-grow justify-center text-13 text-secondary">{t("common.layout")}</span>
-          }
-          customButtonClassName="flex flex-grow justify-center text-secondary text-13"
-          closeOnSelect
-        >
-          {SUPPORTED_LAYOUTS.map((layout, index) => (
-            <CustomMenu.MenuItem
-              key={ISSUE_LAYOUTS[index].key}
-              onClick={() => {
-                handleLayoutChange(ISSUE_LAYOUTS[index].key);
-              }}
-              className="flex items-center gap-2"
-            >
-              <IssueLayoutIcon layout={ISSUE_LAYOUTS[index].key} className="h-3 w-3" />
-              <div className="text-tertiary">{t(layout.titleTranslationKey)}</div>
-            </CustomMenu.MenuItem>
-          ))}
-        </CustomMenu>
-        <div className="flex flex-grow items-center justify-center border-l border-subtle text-13 text-secondary">
+        <Menu>
+          <MenuTrigger
+            render={
+              <button type="button" className="flex flex-grow justify-center text-body-xs-regular text-secondary" />
+            }
+          >
+            {t("common.layout")}
+          </MenuTrigger>
+          <MenuContent side="bottom" align="start">
+            {SUPPORTED_LAYOUTS.map((layout, index) => (
+              <MenuItem
+                key={layout.key}
+                label={t(layout.titleTranslationKey)}
+                icon={<Icon icon={<IssueLayoutIcon layout={ISSUE_LAYOUTS[index].key} className="size-3" />} />}
+                onClick={() => {
+                  handleLayoutChange(ISSUE_LAYOUTS[index].key);
+                }}
+              />
+            ))}
+          </MenuContent>
+        </Menu>
+        <div className="flex flex-grow items-center justify-center border-l border-subtle text-body-xs-regular text-secondary">
           <FiltersDropdown
             title={t("common.display")}
             placement="bottom-end"
             menuButton={
-              <span className="flex items-center text-13 text-secondary">
+              <span className="flex items-center text-body-xs-regular text-secondary">
                 {t("common.display")}
                 <ChevronDownOutline className="ml-2 h-4 w-4 text-secondary" />
               </span>
@@ -146,12 +145,13 @@ export const CycleIssuesMobileHeader = observer(function CycleIssuesMobileHeader
           </FiltersDropdown>
         </div>
 
-        <span
+        <button
+          type="button"
           onClick={() => setAnalyticsModal(true)}
-          className="flex flex-grow justify-center border-l border-subtle text-13 text-secondary"
+          className="flex flex-grow justify-center border-l border-subtle text-body-xs-regular text-secondary"
         >
           {t("common.analytics")}
-        </span>
+        </button>
       </div>
     </>
   );

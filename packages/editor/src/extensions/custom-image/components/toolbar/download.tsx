@@ -6,7 +6,9 @@
 
 import { DownloadOutline } from "@makeplane/propel/icons";
 // plane imports
-import { Tooltip } from "@plane/propel/tooltip";
+import { Icon } from "@makeplane/propel/components/icon";
+import { ToolbarButton } from "@makeplane/propel/elements/toolbar";
+import { Tooltip } from "@makeplane/propel/components/tooltip";
 
 type Props = {
   src: string;
@@ -16,15 +18,16 @@ export function ImageDownloadAction(props: Props) {
   const { src } = props;
 
   return (
-    <Tooltip tooltipContent="Download">
-      <button
+    <Tooltip label="Download">
+      <ToolbarButton
         type="button"
+        size="sm"
+        labeled={false}
         onClick={() => window.open(src, "_blank")}
-        className="grid h-full flex-shrink-0 place-items-center text-white/60 transition-colors hover:text-white"
         aria-label="Download image"
       >
-        <DownloadOutline className="size-3" />
-      </button>
+        <Icon icon={DownloadOutline} />
+      </ToolbarButton>
     </Tooltip>
   );
 }

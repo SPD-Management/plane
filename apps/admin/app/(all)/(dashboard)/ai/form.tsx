@@ -11,7 +11,7 @@ import type { IFormattedInstanceConfiguration, TInstanceAIConfigurationKeys } fr
 // components
 import type { TControllerInputFormField } from "@/components/common/controller-input";
 import { ControllerInput } from "@/components/common/controller-input";
-import { TOAST_TYPE, setToast } from "@/providers/toast";
+import { setToast } from "@plane/blocks/toast";
 // hooks
 import { useInstance } from "@/hooks/store";
 
@@ -89,7 +89,7 @@ export function InstanceAIForm(props: IInstanceAIForm) {
     await updateInstanceConfigurations(payload)
       .then(() =>
         setToast({
-          type: TOAST_TYPE.SUCCESS,
+          type: "success",
           title: "Success",
           message: "AI Settings updated successfully",
         })
@@ -101,8 +101,8 @@ export function InstanceAIForm(props: IInstanceAIForm) {
     <div className="space-y-8">
       <div className="space-y-3">
         <div>
-          <div className="pb-1 text-18 font-medium text-primary">LLM provider</div>
-          <div className="text-13 font-regular text-tertiary">
+          <div className="pb-1 text-h6-medium text-primary">LLM provider</div>
+          <div className="text-body-sm-regular text-tertiary">
             Any OpenAI-compatible provider works here - OpenAI, Z.AI (GLM), or your own gateway.
           </div>
         </div>

@@ -10,8 +10,8 @@ import useSWR from "swr";
 import { Switch } from "@makeplane/propel/components/switch";
 // components
 import { PageWrapper } from "@/components/common/page-wrapper";
-import { Skeleton } from "@/components/common/skeleton";
-import { TOAST_TYPE, setToast } from "@/providers/toast";
+import { Skeleton } from "@plane/blocks/skeleton";
+import { setToast } from "@plane/blocks/toast";
 // hooks
 import { useInstance } from "@/hooks/store";
 // types
@@ -37,13 +37,13 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
         setToast({
           title: "Email feature disabled",
           message: "Email feature has been disabled",
-          type: TOAST_TYPE.SUCCESS,
+          type: "success",
         });
       } catch (_error) {
         setToast({
           title: "Error disabling email",
           message: "Failed to disable email feature. Please try again.",
-          type: TOAST_TYPE.ERROR,
+          type: "error",
         });
       } finally {
         setIsSubmitting(false);
@@ -65,7 +65,7 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
         description: (
           <>
             Plane can send useful emails to you and your users from your own instance without talking to the Internet.
-            <div className="text-13 font-regular text-tertiary">
+            <div className="text-body-xs-regular text-tertiary">
               Set it up below and please test your settings before you save them.&nbsp;
               <span className="text-danger-primary">Misconfigs can lead to email bounces and errors.</span>
             </div>
@@ -76,7 +76,13 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
             <Skeleton.Item width="24px" height="16px" className="rounded-full" />
           </Skeleton>
         ) : (
-          <Switch checked={isSMTPEnabled} onCheckedChange={handleToggle} size="sm" disabled={isSubmitting} />
+          <Switch
+            aria-label="Enable SMTP email"
+            checked={isSMTPEnabled}
+            onCheckedChange={handleToggle}
+            size="sm"
+            disabled={isSubmitting}
+          />
         ),
       }}
     >

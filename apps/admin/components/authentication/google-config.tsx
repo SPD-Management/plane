@@ -7,10 +7,11 @@
 import { observer } from "mobx-react";
 import Link from "next/link";
 // icons
-import { SettingsOutline } from "@makeplane/propel/icons";
+import { PreferencesOutline } from "@makeplane/propel/icons";
 // plane internal packages
 import { AnchorButton } from "@makeplane/propel/components/anchor-button";
 import { Button } from "@makeplane/propel/components/button";
+import { Icon } from "@makeplane/propel/components/icon";
 import { Switch } from "@makeplane/propel/components/switch";
 import type { TInstanceAuthenticationMethodKeys } from "@plane/types";
 // hooks
@@ -33,13 +34,7 @@ export const GoogleConfiguration = observer(function GoogleConfiguration(props: 
     <>
       {isGoogleConfigured ? (
         <div className="flex items-center gap-4">
-          <AnchorButton
-            variant="primary"
-            size="sm"
-            nativeButton={false}
-            render={<Link href="/authentication/google" />}
-            label="Edit"
-          />
+          <AnchorButton variant="primary" size="sm" render={<Link href="/authentication/google" />} label="Edit" />
           <Switch
             checked={Boolean(parseInt(enableGoogleConfig))}
             onCheckedChange={() => {
@@ -47,6 +42,7 @@ export const GoogleConfiguration = observer(function GoogleConfiguration(props: 
               updateConfig("IS_GOOGLE_ENABLED", newEnableGoogleConfig);
             }}
             size="sm"
+            aria-label="Enable Google"
             disabled={disabled}
           />
         </div>
@@ -57,7 +53,7 @@ export const GoogleConfiguration = observer(function GoogleConfiguration(props: 
           stretch="auto"
           nativeButton={false}
           render={<Link href="/authentication/google" />}
-          icon={<SettingsOutline className="h-4 w-4 p-0.5 text-tertiary" />}
+          icon={<Icon icon={PreferencesOutline} tint="tertiary" />}
           label="Configure"
         />
       )}
